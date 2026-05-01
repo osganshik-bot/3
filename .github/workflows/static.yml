@@ -1,0 +1,98 @@
+# Simple workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload entire repository
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peer-to-Peer Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #e5ddd5; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        #chat { flex: 1; overflow-y: auto; padding: 15px; }
+        .msg { background: white; padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; width: fit-content; max-width: 80%; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .footer { display: flex; padding: 10px; background: #eee; }
+        input { flex: 1; padding: 10px; border: none; border-radius: 20px; outline: none; }
+        button { margin-left: 10px; border: none; background: #075e54; color: white; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="chat"></div>
+
+    <div class="footer">
+        <input id="input" placeholder="Type a message...">
+        <button id="send">Send</button>
+    </div>
+
+    <script>
+        // 1. Gun Setup (Yeh public relay servers use karta hai sync ke liye)
+        const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+        const chatRoom = gun.get('OSGANSHIK!'); // Is naam ko badal kar apna secret naam rakhein
+
+        const input = document.getElementById('input');
+        const send = document.getElementById('send');
+        const chatDiv = document.getElementById('chat');
+
+        // 2. Message Bhejna
+        send.onclick = function() {
+            const text = input.value;
+            if(text) {
+                chatRoom.set({ msg: text, time: Date.now() });
+                input.value = '';
+            }
+        };
+
+        // 3. Message Receive Karna (Real-time)
+        chatRoom.map().once(function(data, id) {
+            if(data && data.msg) {
+                const msgNode = document.createElement('div');
+                msgNode.className = 'msg';
+                msgNode.innerText = data.msg;
+                chatDiv.appendChild(msgNode);
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
